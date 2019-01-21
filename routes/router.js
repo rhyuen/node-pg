@@ -1,6 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../queries.js");
+const db = require("../controllers/users.js");
+
+router.get("/", (req, res) => {
+    res.status(200).json({
+        message: 'hi'
+    });
+});
 
 router.get("/users", db.getUsers);
 router.get("/users/:id", db.getUserById);
