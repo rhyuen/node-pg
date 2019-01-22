@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../controllers/users.js");
+const User = require("../controllers/users.js");
+const Transaction = require("../controllers/transactions.js");
 
 router.get("/", (req, res) => {
     res.status(200).json({
@@ -8,10 +9,15 @@ router.get("/", (req, res) => {
     });
 });
 
-router.get("/users", db.getUsers);
-router.get("/users/:id", db.getUserById);
-router.post("/users", db.createUser);
-router.put("/users/:id", db.updateUser);
-router.delete("/users/:id", db.deleteUser);
+router.get("/users", User.getUsers);
+router.get("/users/:id", User.getUserById);
+router.post("/users", User.createUser);
+router.put("/users/:id", User.updateUser);
+router.delete("/users/:id", User.deleteUser);
+
+router.get("/transactions", Transaction.getTransactions)
+    .post("/transactions", Transaction.createTransaction);
+
+
 
 module.exports = router;

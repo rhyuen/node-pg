@@ -35,7 +35,8 @@ const createTableUsers = async () => {
         name TEXT NOT NULL,
         email TEXT NOT NULL, 
         password TEXT NOT NULL,
-        balance NUMERIC(2) DEFAULT 0.00,
+        balance NUMERIC(8,2) DEFAULT 0.00,
+        email_confirm BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
         last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
     )`;
