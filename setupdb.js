@@ -55,7 +55,7 @@ const createTableTransactions = async () => {
         transaction_id UUID PRIMARY KEY,
         sender uuid NOT NULL REFERENCES users (user_id),
         receiver uuid NOT NULL REFERENCES users (user_id),
-        amount NUMERIC(2) NOT NULL,
+        amount NUMERIC(8, 2) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
         last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
     )`;

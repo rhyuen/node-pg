@@ -15,8 +15,12 @@ router.post("/users", User.createUser);
 router.put("/users/:id", User.updateUser);
 router.delete("/users/:id", User.deleteUser);
 
-router.get("/transactions", Transaction.getTransactions)
-    .post("/transactions", Transaction.createTransaction);
+router.get("/transactions", Transaction.getAllTransactions)
+    .post("/transactions", Transaction.addRemoveFundsTransaction);
+
+router.get("/transactions/:id", Transaction.getTransactionById);
+
+router.post("/transactions/transfer", Transaction.createFundsTransferTransaction);
 
 
 
