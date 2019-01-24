@@ -76,10 +76,31 @@ const deleteUser = async (req, res) => {
     }
 };
 
+const editEmailConfirm = async (req, res) => {
+    const id = req.params.id;
+    console.log(id)
+    const emailConfirmationQuery = `update users set email_confirm = TRUE where user_id = $1 returning *`;
+    try {
+        const data = await db.query(emailConfirmationQuery, [id]);
+        console.log(data)
+        res.status(200).json({
+            message: "The account is confirmed via email.",
+            data: data.rows[0]
+        });
+    } catch (e) {
+        console.log(e)
+        res.status(500).json({
+            error: true,
+            message: e
+        })
+    }
+};
+
 module.exports = {
     getUsers,
     getUserById,
     createUser,
     updateUser,
+    editEmailConfirm,
     deleteUser
 };

@@ -71,8 +71,9 @@ const createTableTransactions = async () => {
 };
 const dropTables = async () => {
     try {
-        const dropUsersTable = "drop table if exists users";
         const dropTransactionsTable = "drop table if exists transactions";
+        const dropUsersTable = "drop table if exists users";
+
         await pool.query(dropTransactionsTable);
         await pool.query(dropUsersTable);
     } catch (e) {
@@ -99,6 +100,14 @@ const fillUsersTable = async () => {
         name: 'lemon',
         email: 'lemon@lemon.ca',
         password: 'lemon'
+    }, {
+        name: 'peach',
+        email: 'peach@peach.ca',
+        password: 'peach'
+    }, {
+        name: 'pear',
+        email: 'pear@pear.ca',
+        password: 'pear'
     }];
 
 
@@ -121,10 +130,15 @@ const fillUsersTable = async () => {
     }
 };
 
+const fillTransactionsTable = async () => {
+
+};
+
 module.exports = {
     createTableUsers,
     fillUsersTable,
     createTableTransactions,
+    fillTransactionsTable,
     dropTables
 };
 

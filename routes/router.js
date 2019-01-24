@@ -5,21 +5,33 @@ const Transaction = require("../controllers/transactions.js");
 
 router.get("/", (req, res) => {
     res.status(200).json({
-        message: 'hi'
+        message: 'hi, bank api thing here.'
     });
 });
 
-router.get("/users", User.getUsers);
-router.get("/users/:id", User.getUserById);
-router.post("/users", User.createUser);
-router.put("/users/:id", User.updateUser);
-router.delete("/users/:id", User.deleteUser);
 
-router.get("/transactions", Transaction.getAllTransactions)
-    .post("/transactions", Transaction.addRemoveFundsTransaction);
+//get all users, add new user
+router.get("/users", User.getUsers)
+    .post("/users", User.createUser);
 
+router.get("/users/:id", User.getUserById)
+    .put("/users/:id", User.updateUser)
+    .delete("/users/:id", User.deleteUser);
+
+router.put("/users/:id/emailconfirm", User.editEmailConfirm);
+
+
+
+//Get all transactions
+router.get("/transactions", Transaction.getAllTransactions);
+
+//Deposit or Withdraw funds
+router.post("/transactions", Transaction.addRemoveFundsTransaction);
+
+//Get Specific Transaction
 router.get("/transactions/:id", Transaction.getTransactionById);
 
+//Give money to another user
 router.post("/transactions/transfer", Transaction.createFundsTransferTransaction);
 
 
