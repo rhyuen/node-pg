@@ -1,89 +1,59 @@
-const {
-    Pool,
-    Client
-} = require("pg");
-const uuid = require("uuid")
-
-require('dotenv').config();
-
-const {
-    PGUSER,
-    PGHOST,
-    PGDATABASE,
-    PGPASSWORD,
-    PGPORT
-} = process.env;
-const pool = new Pool({
-    user: PGUSER,
-    host: PGHOST,
-    database: PGDATABASE,
-    password: PGPASSWORD,
-    port: PGPORT
-});
-
-pool.on("connect", () => {
-    try {
-        console.log("Connected to PG DB");
-    } catch (e) {
-        console.log(`something went wrong: ${e}`);
-    }
-});
+const uuid = require("uuid");
+const db = require("./db/index.js");
 
 const createTableUsers = async () => {
     const createTableQuery = `CREATE TABLE IF NOT EXISTS users(
         user_id UUID PRIMARY KEY,
         name TEXT NOT NULL,
-        email TEXT NOT NULL, 
-        password TEXT NOT NULL,
-        balance NUMERIC(8,2) DEFAULT 0.00,
+        email TEXT NOT NULL UNIQUE, 
+        password TEXT NOT NULL,        
         email_confirm BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
         last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
     )`;
 
-    pool.query(createTableQuery).then(res => {
+    db.query(createTableQuery).then(res => {
         console.log(res);
-        pool.end();
     }).catch(e => {
         console.log(e);
-        pool.end();
     });
 };
 
 const createTableTransactions = async () => {
     const createTransactionsQuery = `CREATE TABLE IF NOT EXISTS transactions(
         transaction_id UUID PRIMARY KEY,
-        sender uuid NOT NULL REFERENCES users (user_id),
-        receiver uuid NOT NULL REFERENCES users (user_id),
+        sender UUID NOT NULL REFERENCES accounts (account_id),
+        receiver UUID NOT NULL REFERENCES accounts (account_id),
         amount NUMERIC(8, 2) NOT NULL,
+        type transaction NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
         last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP 
     )`;
-    pool.query(createTransactionsQuery).then(res => {
+    db.query(createTransactionsQuery).then(res => {
         console.log(res);
         console.log("success");
-        pool.end();
     }).catch(e => {
         console.log("Error occured");
         console.log(e);
-        pool.end();
     });
 };
 const dropTables = async () => {
     try {
-        const dropTransactionsTable = "drop table if exists transactions";
-        const dropUsersTable = "drop table if exists users";
+        const dropTransactionsTable = "DROP table if exists transactions";
+        const dropAccountsTable = "DROP TABLE IF EXISTS accounts";
+        const dropUsersTable = "DROP table if exists users";
 
-        await pool.query(dropTransactionsTable);
-        await pool.query(dropUsersTable);
+        await db.query(dropTransactionsTable);
+        await db.query(dropAccountsTable);
+        await db.query(dropUsersTable);
     } catch (e) {
         console.log(e);
-    } finally {
-        pool.end();
     }
 };
 
 const fillUsersTable = async () => {
+    //TODO: Use bcrypt here. instead of the sql crypt thing below.
+
     const insertUserQuery = `insert into users(
         user_id, name, email, password
     ) values($1, $2, $3, crypt($4, gen_salt('bf')))`;
@@ -114,7 +84,7 @@ const fillUsersTable = async () => {
     try {
         const prm = dummyData.map(item => {
             return new Promise((resolve, reject) => {
-                resolve(pool.query(insertUserQuery, [
+                resolve(db.query(insertUserQuery, [
                     uuid.v4(), item.name, item.email, item.password
                 ]));
             })
@@ -125,13 +95,97 @@ const fillUsersTable = async () => {
 
     } catch (e) {
         console.log(e);
-    } finally {
-        pool.end();
     }
 };
 
 const fillTransactionsTable = async () => {
+    const getAccounts = `select account_id from accounts;`;
+    const createTransaction = `insert into transactions(
+        transaction_id, sender, receiver, amount, type
+    ) values($1, $2, $3, $4, $5)`;
+    const {
+        rows
+    } = await db.query(getAccounts);
 
+    //for multiple tx for each acct
+    const moreRows = rows.concat(rows);
+    const transactionPromises = moreRows.map((r, index) => {
+        const transactionAmt = Math.floor(Math.random() * 1000);
+        return new Promise((resolve, reject) => {
+            const sender = r.account_id;
+
+            //self on even else random
+            const receiver = (index % 2 === 0) ?
+                r.account_id :
+                rows[Math.floor(Math.random() * 1000) % rows.length].account_id;
+
+
+            const finalTransactionAmt = transactionAmt * (index % 4 === 0 ? -1 : 1);
+            const type = (sender === receiver) ?
+                ((finalTransactionAmt > 0) ? 'deposit' : 'withdraw') :
+                'transfer';
+
+            resolve(db.query(createTransaction, [
+                uuid.v4(), sender, receiver, finalTransactionAmt, type
+            ]));
+        });
+    });
+
+    try {
+        const res = Promise.all(transactionPromises);
+        console.log(res);
+    } catch (e) {
+        console.log(e);
+    }
+
+};
+
+const createTableAccounts = async () => {
+    const makeAccountsTable = `create table if not exists accounts(
+        account_id UUID primary key,
+        user_id UUID not null references users(user_id),
+        type account_type default 'savings',
+        balance NUMERIC(8, 2) not null default 0.00,        
+        created_at TIMESTAMP not null default current_timestamp,
+        last_modified TIMESTAMP not null default current_timestamp
+    )`;
+
+    try {
+        const data = await db.query(makeAccountsTable);
+        console.log(data);
+    } catch (e) {
+        console.log(e);
+    }
+};
+
+const fillAccountsTable = async () => {
+    const insertIntoAccounts = `insert into accounts(
+        account_id, user_id, type, balance
+    ) values($1, $2, $3, $4)`;
+    const getUsersForAccounts = `select user_id from users`;
+
+    const {
+        rows
+    } = await db.query(getUsersForAccounts);
+
+    const listOfPrms = rows.map(row => {
+        const balance = Math.floor(Math.random() * 1000);
+        const type = balance % 2 ? 'savings' : 'chequing';
+
+        return new Promise((resolve, reject) => {
+            resolve(db.query(insertIntoAccounts, [
+                uuid.v4(), row.user_id, type, balance
+            ]));
+        })
+    })
+    const res = await Promise.all(listOfPrms);
+    console.log(res);
+};
+
+const createTablesAll = async () => {
+    await createTableUsers();
+    await createTableAccounts();
+    await createTableTransactions();
 };
 
 module.exports = {
@@ -139,7 +193,10 @@ module.exports = {
     fillUsersTable,
     createTableTransactions,
     fillTransactionsTable,
-    dropTables
+    dropTables,
+    createTablesAll,
+    createTableAccounts,
+    fillAccountsTable
 };
 
 require("make-runnable");

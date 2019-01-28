@@ -96,11 +96,43 @@ const editEmailConfirm = async (req, res) => {
     }
 };
 
+const getUserLoginDirections = async (req, res) => {
+    res.status(200).json({
+        message: 'login page'
+    })
+};
+
+const checkUserCredentials = async (req, res) => {
+    const {
+        email,
+        password
+    } = req.body;
+    const checkUserExistsQuery = `select * from users where email = $1`;
+    const checkPasswordQuery = `select * from users where email = $1 and password = crypt($2, gen_salt('bf'))`;
+    try {
+
+        const resultSet = await db.query(checkPasswordQuery, [email, password]);
+        console.log(resultSet)
+        res.status(200).json({
+            message: "User present.  Credentials valid.",
+            data: resultSet.rows[0]
+        })
+    } catch (e) {
+        console.log(`MIstakes have been made. ${e}`);
+        res.status(500).json({
+            error: true,
+            message: e
+        })
+    }
+};
+
 module.exports = {
     getUsers,
     getUserById,
     createUser,
     updateUser,
     editEmailConfirm,
-    deleteUser
+    deleteUser,
+    getUserLoginDirections,
+    checkUserCredentials
 };

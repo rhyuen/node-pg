@@ -10,6 +10,9 @@ router.get("/", (req, res) => {
 });
 
 
+router.get("/login", User.getUserLoginDirections)
+    .post("/login", User.checkUserCredentials);
+
 //get all users, add new user
 router.get("/users", User.getUsers)
     .post("/users", User.createUser);
@@ -19,8 +22,6 @@ router.get("/users/:id", User.getUserById)
     .delete("/users/:id", User.deleteUser);
 
 router.put("/users/:id/emailconfirm", User.editEmailConfirm);
-
-
 
 //Get all transactions
 router.get("/transactions", Transaction.getAllTransactions);
