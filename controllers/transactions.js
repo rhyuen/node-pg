@@ -14,7 +14,6 @@ exports.getAllTransactions = async (req, res) => {
             err: e
         });
     }
-
 };
 
 exports.addRemoveFundsTransaction = async (req, res) => {
@@ -25,20 +24,31 @@ exports.addRemoveFundsTransaction = async (req, res) => {
     } = req.body;
     const beginQuery = "begin transaction";
     const addTransactionQuery = `insert into transactions(
-        transaction_id, sender, receiver, amount
-        ) values($1, $2, $2, $3)`;
-    const operator = (transactionType === "deposit") ? "+" : "-";
+        transaction_id, sender, receiver, amount, type
+        ) values($1, $2, $2, $3, $4)`;
+
+    let operator;
+    if (transactionType === "deposit") {
+        operator = "+";
+    } else if (transactionType === "withdraw") {
+        operator = "-";
+    } else {
+        return res.status(401).json({
+            error: true,
+            message: `Invalid transactionType: Type of '${transactionType}' not allowed.`,
+        });
+    }
     const balanceChangeQuery = `
-        update users 
-        set balance = balance + $2, last_modified = CURRENT_TIMESTAMP 
-        where user_id = $1        
+        update accounts 
+        set balance = balance ${operator} $2, last_modified = CURRENT_TIMESTAMP 
+        where account_id = $1        
         returning *
     `;
     const commitQuery = "commit";
 
     try {
         await db.query(beginQuery);
-        await db.query(addTransactionQuery, [uuid.v4(), receiver, amount]);
+        await db.query(addTransactionQuery, [uuid.v4(), receiver, amount, transactionType]);
         const data = await db.query(balanceChangeQuery, [receiver, amount]);
         await db.query(commitQuery);
         res.status(201).json({
@@ -64,7 +74,6 @@ exports.getTransactionById = async (req, res) => {
             error: e
         });
     }
-
 };
 
 exports.createFundsTransferTransaction = async (req, res) => {
@@ -73,13 +82,19 @@ exports.createFundsTransferTransaction = async (req, res) => {
         receiver
     } = req.body;
     const amount = parseFloat(req.body.amount);
-    const transactionUpdate = `insert into transactions(transaction_id, sender, receiver, amount) values($1, $2, $3, $4) returning *`;
-    const senderUpdate = `update users set balance = balance - $2, last_modified = CURRENT_TIMESTAMP where user_id = $1;`
-    const receiverUpdate = `update users set balance = balance + $2, last_modified = CURRENT_TIMESTAMP where user_id = $1;`
+    const transactionUpdate = `insert into transactions(
+        transaction_id, sender, receiver, amount, type
+        ) values($1, $2, $3, $4, $5) returning *`;
+    const senderUpdate = `update accounts 
+        set balance = balance - $2, last_modified = CURRENT_TIMESTAMP 
+        where account_id = $1;`
+    const receiverUpdate = `update accounts 
+        set balance = balance + $2, last_modified = CURRENT_TIMESTAMP 
+        where account_id = $1;`
 
     try {
         await db.query("begin transaction");
-        const data = await db.query(transactionUpdate, [uuid.v4(), sender, receiver, amount]);
+        const data = await db.query(transactionUpdate, [uuid.v4(), sender, receiver, amount, "transfer"]);
         await db.query(senderUpdate, [sender, amount]);
         await db.query(receiverUpdate, [receiver, amount]);
         await db.query("commit transaction");
@@ -87,6 +102,7 @@ exports.createFundsTransferTransaction = async (req, res) => {
             data: data.rows
         });
     } catch (e) {
+        //TODO: rollback add.
         res.status(500).json({
             error: e
         });

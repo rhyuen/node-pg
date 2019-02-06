@@ -1,10 +1,11 @@
 const uuid = require("uuid");
+const bcrypt = require("bcrypt");
 const db = require("./db/index.js");
 
 const createTableUsers = async () => {
     const createTableQuery = `CREATE TABLE IF NOT EXISTS users(
         user_id UUID PRIMARY KEY,
-        name TEXT NOT NULL,
+        name TEXT NOT NULL UNIQUE,
         email TEXT NOT NULL UNIQUE, 
         password TEXT NOT NULL,        
         email_confirm BOOLEAN DEFAULT FALSE,
@@ -52,47 +53,48 @@ const dropTables = async () => {
 };
 
 const fillUsersTable = async () => {
-    //TODO: Use bcrypt here. instead of the sql crypt thing below.
-
     const insertUserQuery = `insert into users(
         user_id, name, email, password
-    ) values($1, $2, $3, crypt($4, gen_salt('bf')))`;
+    ) values($1, $2, $3, $4)`;
+    const rng = Math.floor(Math.random() * 1000);
 
     const dummyData = [{
-        name: 'apple',
-        email: 'apple@apple.ca',
+        name: `apple${rng}`,
+        email: `apple${rng}@apple.ca`,
         password: 'apple'
     }, {
-        name: 'orange',
-        email: 'orange@orange.ca',
+        name: `orange${rng}`,
+        email: `orange${rng}@orange.ca`,
         password: 'orange'
     }, {
-        name: 'lemon',
-        email: 'lemon@lemon.ca',
+        name: `lemon${rng}`,
+        email: `lemon${rng}@lemon.ca`,
         password: 'lemon'
     }, {
-        name: 'peach',
-        email: 'peach@peach.ca',
+        name: `peach${rng}`,
+        email: `peach${rng}@peach.ca`,
         password: 'peach'
     }, {
-        name: 'pear',
-        email: 'pear@pear.ca',
+        name: `pear${rng}`,
+        email: `pear${rng}@pear.ca`,
         password: 'pear'
     }];
 
-
     try {
         const prm = dummyData.map(item => {
+
             return new Promise((resolve, reject) => {
-                resolve(db.query(insertUserQuery, [
-                    uuid.v4(), item.name, item.email, item.password
-                ]));
-            })
-        })
-        const res = await Promise.all(prm);
-
-        console.log(res)
-
+                const saltRounds = 10;
+                bcrypt.hash(item.password, saltRounds).then(hashedPw => {
+                    resolve(db.query(insertUserQuery, [
+                        uuid.v4(), item.name, item.email, hashedPw
+                    ]));
+                }).catch(e => {
+                    console.log(e);
+                });
+            });
+        });
+        await Promise.all(prm);
     } catch (e) {
         console.log(e);
     }
@@ -183,9 +185,21 @@ const fillAccountsTable = async () => {
 };
 
 const createTablesAll = async () => {
-    await createTableUsers();
-    await createTableAccounts();
-    await createTableTransactions();
+    //TODO: Only Users Table is created.  Then it crashes.
+    //TODO: returns .success property
+    try {
+        console.log("not done.");
+        const usersResult = await createTableUsers();
+        console.log(usersResult);
+        const accountsResult = await createTableAccounts();
+        console.log(accountsResult);
+        const transactionsResult = await createTableTransactions();
+        console.log(transactionsResult);
+    } catch (e) {
+
+        dropTables();
+        console.log("catch statement");
+    }
 };
 
 module.exports = {
